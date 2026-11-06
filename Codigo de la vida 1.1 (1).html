@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Código de Vida · La fábrica celular</title>
+<style>
+:root{
+  --bg:#0b1324; --bg2:#111c33; --card:#16223d; --line:#2a3a5f;
+  --ink:#eef2ff; --mut:#9fb0d3; --acc:#38bdf8; --ok:#22c55e; --bad:#f43f5e; --warn:#fbbf24;
+  --A:#ef4444; --T:#3b82f6; --C:#22c55e; --G:#eab308; --U:#a855f7;
+  --tile:46px;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:radial-gradient(circle at 20% 0%,#1b2b52 0,var(--bg) 55%) fixed;background-color:var(--bg);color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:17px;line-height:1.45;min-height:100vh}
+button{font:inherit;cursor:pointer}
+header{position:sticky;top:0;z-index:5;background:rgba(11,19,36,.92);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);padding:10px 16px}
+.hwrap{max-width:1000px;margin:auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.logo{font-weight:800;letter-spacing:.3px;font-size:18px}
+.logo span{color:var(--acc)}
+.steps{display:flex;gap:6px;flex:1;min-width:220px}
+.step{flex:1;height:8px;border-radius:6px;background:var(--line);position:relative}
+.step.done{background:var(--ok)}
+.step.now{background:var(--acc);box-shadow:0 0 10px var(--acc)}
+.hscore{font-weight:700;color:var(--warn);white-space:nowrap}
+main{max-width:1000px;margin:auto;padding:18px 16px 60px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;margin-bottom:16px}
+h1{font-size:30px;margin:.1em 0 .3em;line-height:1.15}
+h2{font-size:23px;margin:0 0 6px}
+h3{font-size:18px;margin:0 0 8px}
+.tag{display:inline-block;font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--acc);margin-bottom:4px}
+.mut{color:var(--mut)}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.btn{background:var(--acc);color:#04203a;border:0;border-radius:12px;padding:12px 20px;font-weight:800;font-size:17px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.green{background:var(--ok);color:#03250f}
+input,select,textarea{font:inherit;background:var(--bg2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+label{font-weight:600;font-size:15px;display:block;margin-bottom:4px}
+.grid2{display:grid;grid-template-columns:2fr 1fr;gap:12px}
+.rule{display:flex;gap:16px;flex-wrap:wrap;background:var(--bg2);border-radius:12px;padding:10px 14px;margin:10px 0;align-items:center}
+.rule b{font-size:15px}
+.mini{display:inline-flex;align-items:center;gap:4px}
+/* bases */
+.base{width:var(--tile);height:var(--tile);border-radius:10px;display:flex;align-items:center;justify-content:center;
+  font-weight:900;font-size:21px;color:#fff;background:var(--c,#334);text-shadow:0 1px 2px rgba(0,0,0,.45);
+  border:2px solid rgba(255,255,255,.18);transition:transform .35s,opacity .35s;flex:none}
+.base.sm{--tile:30px;font-size:15px;border-radius:7px}
+.base.slot{background:transparent;border:2px dashed #4b5d88;color:transparent;text-shadow:none}
+.base.current{border-color:var(--warn);box-shadow:0 0 0 3px rgba(251,191,36,.35);animation:pulse 1.1s infinite}
+.base.nueva{border-style:dashed;border-color:#fff}
+.base.dim{opacity:.28}
+.base.mutada{box-shadow:0 0 0 3px #fff,0 0 14px 4px var(--warn)}
+.pop{animation:pop .3s}
+.shake{animation:shake .4s}
+@keyframes pop{0%{transform:scale(.5)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+@keyframes pulse{50%{box-shadow:0 0 0 7px rgba(251,191,36,0)}}
+.strand{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;padding:10px 0}
+.pair{display:flex;flex-direction:column;align-items:center}
+.bond{width:4px;height:14px;background:repeating-linear-gradient(#cbd5e1 0 3px,transparent 3px 6px);transition:opacity .3s}
+.pair.open .bond{opacity:0}
+.pair.open .b-top{transform:translateY(-14px) rotate(-6deg)}
+.pair.open .b-bot{transform:translateY(14px) rotate(6deg)}
+.codon{display:flex;gap:4px;padding:6px;border-radius:12px;border:2px solid transparent;position:relative;transition:.25s}
+.codon.ribo{border-color:var(--acc);background:rgba(56,189,248,.12)}
+.codon.ribo::before{content:"ribosoma";position:absolute;top:-11px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:800;
+  background:var(--acc);color:#04203a;padding:0 7px;border-radius:6px;text-transform:uppercase}
+.codon.leido{opacity:.45}
+.palette{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;padding:12px;background:var(--bg2);border-radius:14px;margin-top:8px}
+.palette .base{--tile:62px;font-size:28px;cursor:pointer;border-width:3px}
+.palette .base:active{transform:scale(.92)}
+.copies{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.copybox{background:var(--bg2);border-radius:14px;padding:10px;border:1px solid var(--line)}
+.legend{font-size:14px;color:var(--mut);display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+.legend i{display:inline-block;width:18px;height:18px;border-radius:5px;vertical-align:-4px;margin-right:4px;border:2px solid #fff;background:#64748b}
+.legend i.n{border-style:dashed}
+.slider{width:100%;accent-color:var(--acc);height:32px}
+.learn{border-left:5px solid var(--ok);background:rgba(34,197,94,.08)}
+.learn h3{color:var(--ok)}
+.help{display:inline-flex;width:24px;height:24px;border-radius:50%;background:var(--line);color:var(--ink);border:0;font-weight:800;font-size:14px;align-items:center;justify-content:center;vertical-align:2px}
+.helpbox{display:none;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-top:8px;font-size:15px}
+.helpbox.show{display:block}
+.infogrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.info{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:15px;color:var(--ink)}
+.info > b:first-child{display:block;color:var(--acc);margin-bottom:3px}
+.helic{position:absolute;transform:translate(-50%,-50%);transition:left .35s,top .35s;pointer-events:none;display:flex;flex-direction:column;align-items:center;z-index:2}
+.helic span{font-size:11px;font-weight:800;color:#fdba74;text-transform:uppercase;margin-top:-2px;background:rgba(11,19,36,.85);padding:0 4px;border-radius:4px}
+.lbl{position:absolute;font-size:11px;font-weight:800;color:var(--mut);letter-spacing:.4px}
+.porolbl{left:auto!important;bottom:auto!important;right:-104px;top:84px;color:var(--mut)!important}
+.ribolbl{right:calc(8% + 4px);top:112px;color:#fbbf24}
+.arn-move em{position:absolute;top:-17px;left:0;font-size:11px;font-style:normal;font-weight:800;color:#d8b4fe;white-space:nowrap}
+.cellscene.llego .ribo-ic{animation:pop .5s}
+/* glosario */
+.gl{background:none;border:0;padding:0;font:inherit;color:inherit;font-weight:inherit;border-bottom:2px dotted var(--acc);cursor:pointer;line-height:1.15}
+.gl:hover{color:var(--acc)}
+.glbtn{background:var(--bg2);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:6px 10px;font-weight:700;font-size:14px;position:relative;white-space:nowrap}
+.glbtn b{color:var(--acc)}
+.glbtn i{position:absolute;top:-5px;right:-5px;width:12px;height:12px;border-radius:50%;background:var(--warn);display:none}
+.glbtn.new i{display:block;animation:pulse 1.1s infinite}
+#glnote{position:fixed;top:70px;right:16px;background:#1f2937;border:2px solid var(--acc);border-radius:12px;padding:8px 14px;font-weight:700;font-size:15px;z-index:21;transform:translateX(140%);transition:transform .35s;max-width:calc(100vw - 32px)}
+#glnote.show{transform:none}
+#glov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:30;display:none}
+#glov.open{display:block}
+#glpanel{position:fixed;top:0;right:0;height:100%;width:min(440px,100%);background:var(--card);border-left:1px solid var(--line);z-index:31;transform:translateX(105%);transition:transform .3s;display:flex;flex-direction:column}
+#glpanel.open{transform:none}
+.glhead{padding:14px 16px 10px;border-bottom:1px solid var(--line)}
+.glhead .row{justify-content:space-between}
+.glbar{height:8px;background:var(--line);border-radius:5px;overflow:hidden;margin-top:8px}
+.glbar div{height:100%;background:var(--acc);transition:width .4s}
+.gllist{overflow:auto;padding:12px 16px 30px;flex:1}
+.gitem{background:var(--bg2);border:2px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;gap:12px;transition:border-color .3s,box-shadow .3s}
+.gitem .ic{font-size:28px;line-height:1.1;flex:none;width:34px;text-align:center}
+.gitem h4{margin:0 0 3px;font-size:17px}
+.gitem p{margin:0 0 4px;font-size:15px}
+.gitem small{color:var(--mut);font-size:12.5px}
+.gitem.locked{opacity:.5}
+.gitem.flash{border-color:var(--acc);box-shadow:0 0 0 4px rgba(56,189,248,.3)}
+.tip{background:rgba(56,189,248,.1);border:1px dashed var(--acc);border-radius:12px;padding:8px 12px;font-size:15px;margin-top:10px}
+.defq{font-size:19px;font-weight:600;background:var(--bg2);border-radius:12px;padding:14px 16px;border-left:5px solid var(--acc);margin:6px 0 4px}
+/* núcleo y salida del ARN */
+.cellscene{position:relative;height:170px;background:#0f1a30;border-radius:14px;overflow:hidden;margin:10px 0;border:1px solid var(--line)}
+.nucleo{position:absolute;left:6%;top:15px;width:min(46%,320px);height:120px;border-radius:50%;border:4px solid #60a5fa;background:rgba(96,165,250,.08)}
+.poro{position:absolute;right:-6px;top:46px;width:12px;height:26px;background:#0f1a30;border-radius:4px}
+.nucleo span{position:absolute;left:18px;bottom:12px;font-size:13px;color:#93c5fd;font-weight:700}
+.ribo-ic{position:absolute;right:8%;top:48px;width:70px;height:54px}
+.ribo-ic div{position:absolute;border-radius:50%;background:#f59e0b}
+.arn-move{position:absolute;left:calc(6% + 40px);top:62px;display:flex;gap:2px}
+.arn-move b{width:10px;height:22px;border-radius:3px;background:var(--U)}
+.arn-move.go{animation:salir 2.6s ease-in-out forwards}
+@keyframes salir{0%{left:calc(6% + 40px)}45%{left:calc(6% + min(46%,320px) - 30px)}100%{left:calc(92% - 95px)}}
+/* figuras */
+.figbtn{background:var(--bg2);border:2px solid var(--line);border-radius:14px;padding:8px 10px;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--ink);min-width:88px}
+.figbtn small{font-size:12px;color:var(--mut)}
+.figbtn:active{transform:scale(.95)}
+.keybox{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.keyitem{display:flex;align-items:center;gap:8px;background:var(--bg2);border-radius:10px;padding:6px 8px;font-size:14px}
+.keyitem svg{flex:none}
+.keyfig{display:flex;flex-direction:column;align-items:center;min-width:64px;font-size:12px;font-weight:700}
+.keyitem .cods{display:flex;flex-direction:column;gap:3px}
+.keyitem .cod{display:flex;gap:2px}
+.chain{display:flex;align-items:center;justify-content:center;min-height:92px;padding:10px;position:relative;flex-wrap:wrap}
+.chain .aa{position:relative;transition:transform 1.2s cubic-bezier(.5,1.6,.4,1)}
+.chain .aa + .aa::before{content:"";position:absolute;left:-14px;top:50%;width:14px;height:4px;background:#cbd5e1}
+.chain .aa{margin-left:14px}
+.chain .aa:first-child{margin-left:0}
+.chain.folded .aa::before{opacity:0}
+.chain.folded .aa{transform:translate(var(--fx),var(--fy)) rotate(var(--fr))}
+.protrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:48px}
+.mutgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.opt{display:block;width:100%;text-align:left;background:var(--bg2);border:2px solid var(--line);color:var(--ink);border-radius:12px;padding:12px 14px;margin-top:8px;font-weight:600}
+.opt.ok{border-color:var(--ok);background:rgba(34,197,94,.15)}
+.opt.bad{border-color:var(--bad);background:rgba(244,63,94,.15)}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(120px);background:#1f2937;border:2px solid var(--warn);color:var(--ink);
+  padding:12px 18px;border-radius:14px;font-weight:600;max-width:92vw;transition:transform .3s;z-index:20;text-align:center}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast.good{border-color:var(--ok)}
+table{width:100%;border-collapse:collapse;font-size:16px}
+td,th{padding:8px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--mut);font-size:14px}
+.stars{font-size:38px;letter-spacing:4px}
+.dogma{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;font-weight:800;font-size:18px;margin:10px 0}
+.dogma span{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:6px 12px}
+.dogma em{color:var(--acc);font-style:normal;font-size:13px}
+@media (max-width:640px){
+  :root{--tile:38px}
+  body{font-size:16px}
+  h1{font-size:25px}
+  .grid2,.copies,.mutgrid,.infogrid{grid-template-columns:1fr}
+  .porolbl{right:-34px;top:128px}
+  .porolbl::first-letter{color:transparent}
+  .keybox{grid-template-columns:1fr 1fr;gap:6px}
+  .keyitem{padding:5px;gap:4px}
+  .keyitem .base.sm{--tile:22px;font-size:12px;border-radius:5px}
+  .keyfig{min-width:48px;font-size:11px}
+  .palette .base{--tile:54px;font-size:24px}
+  .figbtn{min-width:76px;padding:6px}
+}
+</style>
+</head>
+<body>
+<header><div class="hwrap">
+  <div class="logo">🧬 Código <span>de Vida</span></div>
+  <button class="glbtn" id="glbtn" type="button">📖 Glosario <b id="glcount">0</b><i></i></button>
+  <div class="steps" id="steps"></div>
+  <div class="hscore" id="hscore"></div>
+</div></header>
+<main id="app"></main>
+<div id="toast"></div>
+<div id="glnote"></div>
+<div id="glov"></div>
+<aside id="glpanel" aria-label="Glosario">
+  <div class="glhead"><div class="row"><h2 style="margin:0">📖 Glosario</h2><button class="btn ghost" id="glclose" type="button" style="padding:6px 14px">Cerrar ✕</button></div>
+  <div class="mut" id="glsub" style="font-size:14px;margin-top:4px"></div><div class="glbar"><div id="glbarfill" style="width:0"></div></div></div>
+  <div class="gllist" id="gllist"></div>
+</aside>
+
+<script>
+/* ===== CONFIGURACIÓN =====
+   Pega aquí la URL de tu Apps Script (termina en /exec).
+   Si la dejas vacía, el juego funciona igual pero no guarda resultados. */
+const URL_REGISTRO = "";
+const NOMBRE_JUEGO = "Código de Vida";
+const GRUPOS = ["1° A","1° B","1° C","1° D","1° E","1° F"];
+
+/* ===== DATOS BIOLÓGICOS ===== */
+const PAR_ADN = {A:'T',T:'A',C:'G',G:'C'};
+const PAR_ARN = {A:'U',T:'A',C:'G',G:'C'};
+// Llave de colores simplificada (basada en codones reales)
+const KEY = {AUG:'estrella',UGC:'rombo',GGU:'circulo',GGC:'circulo',CGC:'triangulo',GCA:'cuadro',UAA:'alto',UGA:'alto'};
+const FIG = {
+  estrella:{n:'Estrella',s:'pieza de inicio',c:'#facc15'},
+  rombo:{n:'Rombo',s:'pieza',c:'#fb923c'},
+  circulo:{n:'Círculo',s:'pieza',c:'#34d399'},
+  triangulo:{n:'Triángulo',s:'pieza',c:'#f472b6'},
+  cuadro:{n:'Cuadro',s:'pieza',c:'#60a5fa'},
+  alto:{n:'ALTO',s:'señal de fin',c:'#ef4444'}
+};
+const GEN = "TACACGCCAACGATT";   // hebra molde del gen de la queratina → ARN AUG UGC GGU UGC UAA
+const SEQ1 = "ATCGGCTA";
+const SEQ2 = "GCATTC";
+
+/* ===== GLOSARIO ===== */
+const GLOS = {
+  adn:{t:'ADN',ic:'🧬',e:0,d:'Molécula con forma de doble hélice (como una escalera torcida) que guarda las instrucciones para formar y hacer funcionar a un ser vivo.'},
+  queratina:{t:'Queratina',ic:'💇',e:0,d:'Proteína que forma el pelo, las uñas y la capa externa de la piel.'},
+  proteina:{t:'Proteína',ic:'🧶',e:0,d:'Cadena de aminoácidos doblada en una forma especial. Las proteínas construyen y hacen funcionar a las células.'},
+  nucleo:{t:'Núcleo',ic:'🔵',e:0,d:'Parte de la célula, rodeada por una envoltura, que guarda y protege el ADN.'},
+  hebra:{t:'Hebra',ic:'🪢',e:1,d:'Cada una de las dos cadenas que forman el ADN. Están unidas por pares de bases, como los dientes de un cierre.'},
+  base:{t:'Base nitrogenada',ic:'🔤',e:1,d:'Las "letras" del código genético. En el ADN son A, T, C y G. Su orden forma la información.'},
+  replicacion:{t:'Replicación',ic:'📠',e:2,d:'Proceso en el que la célula copia todo su ADN antes de dividirse, para que cada célula hija reciba la información completa.'},
+  enzima:{t:'Enzima',ic:'🔧',e:2,d:'Proteína que funciona como herramienta: realiza y acelera trabajos dentro de la célula, como abrir o copiar el ADN.'},
+  helicasa:{t:'Helicasa',ic:'✂️',e:2,d:'Enzima que abre el ADN como un cierre: rompe los puentes débiles entre las bases y separa las dos hebras.'},
+  polimerasa:{t:'ADN polimerasa',ic:'🧩',e:2,d:'Enzima que lee una hebra del ADN y le coloca las bases nuevas que le corresponden (A con T, C con G).'},
+  gen:{t:'Gen',ic:'📜',e:2,d:'Un pedazo del ADN con la receta para fabricar una proteína específica.'},
+  transcripcion:{t:'Transcripción',ic:'📝',e:3,d:'Proceso en el que se copia un gen del ADN en una molécula de ARN mensajero. Ocurre dentro del núcleo.'},
+  arnm:{t:'ARN mensajero',ic:'✉️',e:3,d:'Copia de un solo gen, de una sola hebra, que lleva la receta desde el núcleo hasta el ribosoma.'},
+  uracilo:{t:'Uracilo (U)',ic:'🟪',e:3,d:'Base que usa el ARN en lugar de la timina (T). Se une con la A.'},
+  poro:{t:'Poro nuclear',ic:'🚪',e:3,d:'Pequeña abertura en la envoltura del núcleo por donde sale el ARN mensajero.'},
+  citoplasma:{t:'Citoplasma',ic:'💧',e:3,d:'Todo el interior de la célula que está fuera del núcleo. Ahí se encuentran los ribosomas.'},
+  ribosoma:{t:'Ribosoma',ic:'🏭',e:3,d:'Estructura de la célula que funciona como máquina ensambladora: lee el ARN mensajero y arma las proteínas.'},
+  traduccion:{t:'Traducción',ic:'🔁',e:4,d:'Proceso en el que el ribosoma lee el ARN de 3 en 3 letras y une aminoácidos para formar una proteína.'},
+  codon:{t:'Codón (trío)',ic:'🔢',e:4,d:'Grupo de 3 bases seguidas del ARN. Cada uno indica un aminoácido o la señal de ALTO.'},
+  aminoacido:{t:'Aminoácido',ic:'🔷',e:4,d:'Pieza con la que se arman las proteínas. Existen 20 tipos; en este juego son las figuras.'},
+  mutacion:{t:'Mutación',ic:'⚠️',e:5,d:'Cambio en la secuencia de bases del ADN. Puede no tener efecto, cambiar una pieza de la proteína o dejarla incompleta.'}
+};
+const NGLOS = Object.keys(GLOS).length;
+function g(id,txt){ return `<button type="button" class="gl" data-g="${id}">${txt}</button>`; }
+function lugarActual(){ return !S.inicio ? 'Inicio' : (S.cur<5 ? 'Estación '+(S.cur+1) : 'Reto final'); }
+let glNoteT, glPend=[];
+function unlockGl(ids){
+  const nuevos=ids.filter(id=>GLOS[id] && !S.glos.has(id));
+  nuevos.forEach(id=>S.glos.set(id,lugarActual()));
+  if(!nuevos.length) return;
+  updGlBtn(); document.getElementById('glbtn').classList.add('new');
+  glPend.push(...nuevos.map(id=>GLOS[id].t));
+  const n=document.getElementById('glnote');
+  n.textContent = (glPend.length>1?'📖 Nuevos términos: ':'📖 Nuevo término: ')+glPend.join(', ');
+  n.className='show'; clearTimeout(glNoteT); glNoteT=setTimeout(()=>{n.className='';glPend=[];},2800);
+  if(document.getElementById('glpanel').classList.contains('open')) renderGlos();
+}
+function updGlBtn(){ document.getElementById('glcount').textContent=`${S.glos.size}/${NGLOS}`; }
+function renderGlos(focus){
+  const L=document.getElementById('gllist');
+  document.getElementById('glsub').textContent=`Descubriste ${S.glos.size} de ${NGLOS} términos. Toca las palabras subrayadas del juego para verlas aquí.`;
+  document.getElementById('glbarfill').style.width=(S.glos.size/NGLOS*100)+'%';
+  L.innerHTML=Object.entries(GLOS).map(([id,o])=> S.glos.has(id)
+    ? `<div class="gitem" id="gi-${id}"><div class="ic">${o.ic}</div><div><h4>${o.t}</h4><p>${o.d}</p><small>📍 Lo viste en: ${S.glos.get(id)}</small></div></div>`
+    : `<div class="gitem locked"><div class="ic">🔒</div><div><h4>Término por descubrir</h4><small>${o.e?'Aparece en la Estación '+o.e:'Aparece al inicio'}</small></div></div>`).join('');
+  if(focus){ const el=document.getElementById('gi-'+focus); if(el){ el.scrollIntoView({block:'center'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1600);} }
+}
+function openGlos(focus){
+  if(S.glLock){ toast('El glosario está cerrado durante el reto final. ¡Tú puedes!'); return; }
+  renderGlos(focus); document.getElementById('glpanel').classList.add('open'); document.getElementById('glov').classList.add('open');
+  document.getElementById('glbtn').classList.remove('new');
+}
+function closeGlos(){ document.getElementById('glpanel').classList.remove('open'); document.getElementById('glov').classList.remove('open'); }
+document.getElementById('glbtn').onclick=()=>openGlos();
+document.getElementById('glclose').onclick=closeGlos;
+document.getElementById('glov').onclick=closeGlos;
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeGlos(); });
+document.addEventListener('click',e=>{ const b=e.target.closest('.gl'); if(b){ unlockGl([b.dataset.g]); openGlos(b.dataset.g);} });
+new MutationObserver(()=>{ const ids=[...document.querySelectorAll('#app .gl')].map(b=>b.dataset.g); unlockGl(ids); })
+  .observe(document.getElementById('app'),{childList:true,subtree:true});
+
+/* ===== ESTADO ===== */
+const S = {nombre:'',grupo:'',est:[],cur:0,err:0,t0:0,inicio:0,bitacora:'',glos:new Map(),glLock:false};
+const TITULOS = ['Arma el ADN','Copia el ADN','La copia de trabajo','Fabrica la proteína','Reto: la mutación','Reto del glosario'];
+const app = document.getElementById('app');
+
+/* ===== UTILIDADES ===== */
+const $ = s => app.querySelector(s);
+function h(html){ app.innerHTML = html; window.scrollTo({top:0,behavior:'smooth'}); }
+function col(b){ return `var(--${b})`; }
+function tile(b,extra='',cls=''){ return `<div class="base ${cls}" style="--c:${col(b)}" ${extra}>${b}</div>`; }
+let toastT;
+function toast(msg,good){ const t=document.getElementById('toast'); t.textContent=msg; t.className='show'+(good?' good':''); clearTimeout(toastT); toastT=setTimeout(()=>t.className='',2600); }
+function shake(el){ el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
+function puntosTotales(){ return S.est.reduce((a,e)=>a+e.pts,0); }
+function header(){
+  const st=document.getElementById('steps');
+  st.innerHTML = TITULOS.map((t,i)=>`<div class="step ${i<S.est.length?'done':(i===S.cur&&S.inicio?'now':'')}" title="${t}"></div>`).join('');
+  document.getElementById('hscore').textContent = S.inicio ? `⭐ ${puntosTotales()} pts` : '';
+}
+function codonSplit(s){ const r=[]; for(let i=0;i<s.length;i+=3) r.push(s.slice(i,i+3)); return r; }
+function transcribir(adn){ return [...adn].map(b=>PAR_ARN[b]).join(''); }
+function traducir(arn){ const out=[]; for(const c of codonSplit(arn)){ const f=KEY[c]; if(!f||f==='alto') break; out.push(f);} return out; }
+
+function figSVG(k,size=40){
+  const c=FIG[k].c; let shape='';
+  if(k==='estrella'){ let p=[]; for(let i=0;i<10;i++){const r=i%2?8:18,a=Math.PI/5*i-Math.PI/2;p.push((20+r*Math.cos(a)).toFixed(1)+','+(21+r*Math.sin(a)).toFixed(1));} shape=`<polygon points="${p.join(' ')}"/>`; }
+  if(k==='rombo') shape='<polygon points="20,2 38,20 20,38 2,20"/>';
+  if(k==='circulo') shape='<circle cx="20" cy="20" r="17"/>';
+  if(k==='triangulo') shape='<polygon points="20,3 38,36 2,36"/>';
+  if(k==='cuadro') shape='<rect x="4" y="4" width="32" height="32" rx="5"/>';
+  if(k==='alto'){ let p=[]; for(let i=0;i<8;i++){const a=Math.PI/4*i+Math.PI/8;p.push((20+18*Math.cos(a)).toFixed(1)+','+(20+18*Math.sin(a)).toFixed(1));} shape=`<polygon points="${p.join(' ')}"/><text x="20" y="24.5" font-size="10" font-weight="900" text-anchor="middle" fill="#fff" stroke="none">ALTO</text>`; }
+  return `<svg width="${size}" height="${size}" viewBox="0 0 40 40" fill="${c}" stroke="rgba(255,255,255,.7)" stroke-width="2">${shape}</svg>`;
+}
+
+/* Rellenado secuencial de casillas con la paleta de bases */
+function runFill(tasks, palette, bases, onDone){
+  let i=0;
+  const setCur=()=>{ tasks.forEach(t=>t.el.classList.remove('current')); if(tasks[i]) tasks[i].el.classList.add('current'); };
+  palette.innerHTML = bases.map(b=>`<button class="base" data-b="${b}" style="--c:${col(b)}" aria-label="Base ${b}">${b}</button>`).join('');
+  palette.onclick = e=>{
+    const btn=e.target.closest('button[data-b]'); if(!btn||i>=tasks.length) return;
+    const b=btn.dataset.b, t=tasks[i];
+    if(b===t.expected){
+      t.el.textContent=b; t.el.style.setProperty('--c',col(b));
+      t.el.classList.remove('slot','current'); t.el.classList.add('pop'); if(t.nueva) t.el.classList.add('nueva');
+      i++; if(i<tasks.length) setCur(); else { palette.onclick=null; palette.querySelectorAll('button').forEach(x=>x.disabled=true); onDone(); }
+    } else { S.err++; shake(t.el); toast(t.hint(b)); }
+  };
+  setCur();
+}
+function hintADN(base){ return b=>`La ${base} se une con la ${PAR_ADN[base]}, no con la ${b}.`; }
+
+function shell(n, titulo, instr, extra=''){
+  return `<div class="card"><div class="tag">Estación ${n} de 5</div><h2>${titulo}</h2><p class="mut" style="margin:0">${instr}</p>${extra}</div>`;
+}
+function startStation(){ S.err=0; S.t0=Date.now(); header(); }
+function endStation(conclusion, maxPts=100){
+  const seg=Math.round((Date.now()-S.t0)/1000);
+  const pts = maxPts===null ? S._pts : Math.max(30,100-10*S.err);
+  S.est.push({err:S.err,seg,pts}); S.cur++; header();
+  const div=document.createElement('div'); div.className='card learn';
+  div.innerHTML=`<h3>✅ Lo que aprendiste</h3><p style="margin-top:0">${conclusion}</p>
+    <div class="row"><b style="color:var(--warn)">+${pts} pts</b><span class="mut">${S.err} error(es) · ${seg} s</span>
+    <button class="btn green" id="next" style="margin-left:auto">${S.cur<5?'Siguiente estación →':(S.cur===5?'Ir al reto final 📖':'Ver resultados →')}</button></div>`;
+  app.appendChild(div); div.scrollIntoView({behavior:'smooth',block:'center'});
+  div.querySelector('#next').onclick=()=>STATIONS[S.cur]();
+  if(S.err===0) toast('¡Perfecto, sin errores! 🎉',true);
+}
+
+/* ===== PANTALLA DE INICIO ===== */
+function inicio(){
+  S.inicio=0; S.glLock=false; S.glos=new Map(); updGlBtn(); closeGlos(); header();
+  h(`<div class="card">
+    <div class="tag">Biología · La célula y la herencia</div>
+    <h1>Código de Vida: la fábrica celular</h1>
+    <p>Eres técnico de una fábrica muy pequeña: <b>una célula de la raíz de tu pelo</b>. La célula necesita fabricar <b>${g('queratina','queratina')}</b>, la ${g('proteina','proteína')} que forma tu pelo y tus uñas.</p>
+    <p>La receta está guardada en el <b>${g('adn','ADN')}</b>, dentro del ${g('nucleo','núcleo')}. Tu misión es seguir la receta paso a paso hasta tener la proteína lista.</p>
+    <div class="dogma"><span>ADN</span><em>copiar →</em><span>ADN</span><em>transcribir →</em><span>ARN</span><em>traducir →</em><span>Proteína</span></div>
+    <div class="tip">📖 <b>Tip:</b> toca las <span style="border-bottom:2px dotted var(--acc)">palabras subrayadas</span> para ver qué significan. Cada término que descubras se guarda en tu <b>Glosario</b> (botón de arriba). Al final habrá un reto con ellos.</div>
+  </div>
+  <div class="card">
+    <div class="grid2">
+      <div><label for="nom">Tu nombre (o el de tu equipo)</label><input id="nom" maxlength="60" placeholder="Ej. Ana López"></div>
+      <div><label for="gru">Grupo</label><select id="gru"><option value="">Elige…</option>${GRUPOS.map(g=>`<option>${g}</option>`).join('')}</select></div>
+    </div>
+    <div class="row" style="margin-top:14px"><button class="btn" id="go">Entrar al núcleo 🔬</button>
+    <span class="mut" style="font-size:14px">5 estaciones + reto final · unos 20 minutos</span></div>
+  </div>`);
+  $('#go').onclick=()=>{
+    const n=$('#nom').value.trim(), g=$('#gru').value;
+    if(!n||!g){ toast('Escribe tu nombre y elige tu grupo.'); return; }
+    S.nombre=n; S.grupo=g; S.est=[]; S.cur=0; S.inicio=Date.now(); est1();
+  };
+}
+
+/* ===== ESTACIÓN 1: ARMA EL ADN ===== */
+function est1(){
+  startStation();
+  h(shell(1,'Arma el ADN',`El ADN tiene dos ${g('hebra','hebras')} unidas como un cierre. Completa la hebra de abajo tocando la ${g('base','base')} que se une con cada base de arriba.`,
+    `<div class="rule"><b>Regla de unión:</b><span class="mini">${tile('A','','sm')} ↔ ${tile('T','','sm')}</span><span class="mini">${tile('C','','sm')} ↔ ${tile('G','','sm')}</span></div>`)
+  + `<div class="card"><div class="strand" id="hel">${[...SEQ1].map(b=>`<div class="pair">${tile(b)}<div class="bond"></div><div class="base slot"></div></div>`).join('')}</div>
+     <div class="palette" id="pal"></div></div>`);
+  const slots=[...app.querySelectorAll('#hel .slot')];
+  const tasks=slots.map((el,i)=>({el,expected:PAR_ADN[SEQ1[i]],hint:hintADN(SEQ1[i])}));
+  runFill(tasks,$('#pal'),['A','T','C','G'],()=>endStation('El ADN tiene <b>dos hebras</b> unidas por pares de bases: <b>A con T</b> y <b>C con G</b>. El <b>orden</b> de las bases es la información: como las letras de una receta.'));
+}
+
+/* ===== ESTACIÓN 2: REPLICACIÓN ===== */
+function est2(){
+  startStation();
+  const bot=[...SEQ2].map(b=>PAR_ADN[b]).join('');
+  h(shell(2,'Copia el ADN (replicación)',`Antes de dividirse, la célula hace una copia de todo su ADN para que cada célula hija tenga la receta completa. A esto se le llama ${g('replicacion','replicación')}.`,
+    `<div class="infogrid">
+      <div class="info"><b>🔧 ¿Qué es la helicasa?</b>Es una ${g('enzima','enzima')}: una proteína que trabaja como herramienta dentro de la célula.</div>
+      <div class="info"><b>🏭 ¿De dónde sale?</b>La misma célula la fabrica en sus ${g('ribosoma','ribosomas')}, siguiendo la receta de un ${g('gen','gen')} del ADN. ¡Igual que tú vas a fabricar la queratina!</div>
+      <div class="info"><b>✂️ ¿Qué hace?</b>Se coloca en un punto del ADN y avanza como el jalador de un cierre: <b style="display:inline;color:inherit">rompe los puentes débiles</b> que unen las bases. No corta las hebras, solo las separa.</div>
+    </div>`)
+  + `<div class="card" id="c1"><h3>Paso 1 · Abre el cierre</h3><p class="mut" style="margin-top:0">Tú controlas la ${g('helicasa','helicasa')} 🔶: deslízala hacia la derecha para separar las dos hebras.</p>
+     <div class="strand" id="hel" style="position:relative">${[...SEQ2].map((b,i)=>`<div class="pair" data-i="${i}">${tile(b,'','b-top')}<div class="bond"></div>${tile(bot[i],'','b-bot')}</div>`).join('')}
+       <div class="helic" id="hc"><svg width="30" height="56" viewBox="0 0 30 56"><polygon points="0,2 30,28 0,54" fill="#f97316" stroke="#fff" stroke-width="2"/></svg><span>helicasa</span></div></div>
+     <p id="hcap" class="mut" style="text-align:center;margin:4px 0 0;min-height:1.4em">Puentes rotos: 0 de ${SEQ2.length}</p>
+     <input type="range" class="slider" id="sl" min="0" max="${SEQ2.length}" value="0" aria-label="Helicasa"></div>`);
+  const sl=$('#sl'), hc=$('#hc'), pairs=[...app.querySelectorAll('#hel .pair')]; let done=false;
+  const moveHelic=()=>{ const v=+sl.value, p=pairs[Math.min(v,pairs.length-1)];
+    hc.style.left=(v<pairs.length ? p.offsetLeft-12 : p.offsetLeft+p.offsetWidth+12)+'px'; hc.style.top=(p.offsetTop+p.offsetHeight/2)+'px'; };
+  moveHelic(); window.addEventListener('resize',moveHelic);
+  sl.oninput=()=>{
+    const v=+sl.value;
+    pairs.forEach(p=>p.classList.toggle('open',+p.dataset.i<v)); moveHelic();
+    $('#hcap').innerHTML = v ? `Puentes rotos: <b>${v} de ${SEQ2.length}</b> · la helicasa separó <b>${SEQ2[v-1]}</b> de <b>${bot[v-1]}</b>` : `Puentes rotos: 0 de ${SEQ2.length}`;
+    if(v===SEQ2.length && !done){ done=true; sl.disabled=true; window.removeEventListener('resize',moveHelic); $('#hcap').innerHTML+=' · ¡ADN abierto!'; setTimeout(paso2,900); }
+  };
+  function paso2(){
+    const div=document.createElement('div'); div.className='card';
+    div.innerHTML=`<h3>Paso 2 · Completa las dos copias</h3><p class="mut" style="margin-top:0">Ahora entra otra enzima, la <b>${g('polimerasa','ADN polimerasa')}</b>: lee cada hebra original y le pega las bases que le corresponden. <b>¡Aquí tú eres la polimerasa!</b> Coloca las bases nuevas en ambas copias.</p>
+      <div class="legend"><span><i></i>hebra original</span><span><i class="n"></i>hebra nueva</span></div>
+      <div class="copies">
+        <div class="copybox"><b>Copia 1</b><div class="strand" id="k1">${[...SEQ2].map(b=>`<div class="pair">${tile(b)}<div class="bond"></div><div class="base slot"></div></div>`).join('')}</div></div>
+        <div class="copybox"><b>Copia 2</b><div class="strand" id="k2">${[...bot].map(b=>`<div class="pair"><div class="base slot"></div><div class="bond"></div>${tile(b)}</div>`).join('')}</div></div>
+      </div><div class="palette" id="pal"></div>`;
+    app.appendChild(div); div.scrollIntoView({behavior:'smooth',block:'start'});
+    const t1=[...div.querySelectorAll('#k1 .slot')].map((el,i)=>({el,expected:PAR_ADN[SEQ2[i]],hint:hintADN(SEQ2[i]),nueva:1}));
+    const t2=[...div.querySelectorAll('#k2 .slot')].map((el,i)=>({el,expected:PAR_ADN[bot[i]],hint:hintADN(bot[i]),nueva:1}));
+    runFill([...t1,...t2],div.querySelector('#pal'),['A','T','C','G'],()=>{
+      toast('¡Ahora hay dos ADN idénticos!',true);
+      endStation('Al copiarse, el ADN se abre y <b>cada hebra original sirve de molde</b> para una nueva. Resultan <b>dos ADN idénticos</b>, cada uno con una hebra vieja y una nueva. Por eso las dos células hijas reciben <b>la misma información</b>.');
+    });
+  }
+}
+
+/* ===== ESTACIÓN 3: TRANSCRIPCIÓN ===== */
+function est3(){
+  startStation();
+  const flankL="GCA", flankR="CGT";
+  const cods=codonSplit(GEN);
+  h(shell(3,'La copia de trabajo (transcripción)',`El ADN nunca sale del núcleo. Para llevar la receta al ribosoma, la célula copia <b>solo un gen</b> en una molécula de una sola hebra: el <b>${g('arnm','ARN mensajero')}</b>. Este proceso se llama ${g('transcripcion','transcripción')}.`,
+    `<div class="rule"><b>Regla del ARN:</b><span class="mini">${tile('A','','sm')} → ${tile('U','','sm')}</span><span class="mini">${tile('T','','sm')} → ${tile('A','','sm')}</span><span class="mini">${tile('C','','sm')} → ${tile('G','','sm')}</span><span class="mini">${tile('G','','sm')} → ${tile('C','','sm')}</span>
+     <span class="mut" style="font-size:14px">En el ARN no hay T: en su lugar va la <b style="color:var(--U)">U</b> (${g('uracilo','uracilo')}).</span></div>`)
+  + `<div class="card"><h3>Gen de la queratina</h3><p class="mut" style="margin-top:0">Las bases grises son de otros genes: no se copian.</p>
+     <div class="strand" id="gen">
+      <div class="codon">${[...flankL].map(b=>tile(b,'','dim')).join('')}</div>
+      ${cods.map(c=>`<div class="codon">${[...c].map(b=>`<div class="pair">${tile(b)}<div class="bond"></div><div class="base slot"></div></div>`).join('')}</div>`).join('')}
+      <div class="codon">${[...flankR].map(b=>tile(b,'','dim')).join('')}</div>
+     </div>
+     <div class="palette" id="pal"></div></div>`);
+  const slots=[...app.querySelectorAll('#gen .slot')];
+  const tasks=slots.map((el,i)=>{const d=GEN[i];return {el,expected:PAR_ARN[d],hint:b=> (b==='T'?'¡Cuidado! En el ARN no existe la T: se usa la U.':`Con la ${d} del ADN, el ARN pone ${PAR_ARN[d]}.`)};});
+  runFill(tasks,$('#pal'),['A','U','C','G','T'],()=>{
+    const div=document.createElement('div'); div.className='card';
+    div.innerHTML=`<h3>El ARN sale del núcleo y viaja al ribosoma</h3><p class="mut" style="margin-top:0">Tu ARN mensajero ya está listo. Ahora tiene que salir del núcleo para llegar a la "fábrica" donde se arma la proteína.</p>
+      <div class="cellscene">
+        <span class="lbl" style="right:12px;top:8px">CITOPLASMA (fuera del núcleo)</span>
+        <div class="nucleo"><div class="poro"></div><span>NÚCLEO<br><small>aquí se queda el ADN</small></span><span class="lbl porolbl">◂ poro nuclear</span></div>
+        
+        <div class="ribo-ic"><div style="width:70px;height:34px;top:20px"></div><div style="width:50px;height:28px;left:10px;top:0;background:#fbbf24"></div></div>
+        <span class="lbl ribolbl">RIBOSOMA</span>
+        <div class="arn-move" id="arn"><em>ARN mensajero</em>${'<b></b>'.repeat(10)}</div>
+      </div>
+      <div class="infogrid" style="margin-bottom:12px">
+        <div class="info"><b>🔵 ${g('nucleo','Núcleo')}</b>Guarda el ADN completo. El ADN es muy valioso y nunca sale de aquí.</div>
+        <div class="info"><b>🚪 ${g('poro','Poro nuclear')}</b>Una "puerta" pequeña en la envoltura del núcleo. Por ahí sale el ARN mensajero.</div>
+        <div class="info"><b>🟠 ${g('ribosoma','Ribosoma')}</b>La <b style="display:inline;color:inherit">máquina que arma proteínas</b>. Está en el ${g('citoplasma','citoplasma')}, lee el ARN de 3 en 3 letras y va uniendo las piezas. ¡En la siguiente estación tú lo manejas!</div>
+      </div>
+      <button class="btn" id="env">Enviar el ARN al ribosoma 🚀</button>`;
+    app.appendChild(div); div.scrollIntoView({behavior:'smooth',block:'center'});
+    div.querySelector('#env').onclick=e=>{ e.target.disabled=true; div.querySelector('#arn').classList.add('go');
+      setTimeout(()=>{ div.querySelector('.cellscene').classList.add('llego'); toast('¡El ARN llegó al ribosoma!',true); },2700);
+      setTimeout(()=>endStation('El <b>ARN mensajero</b> es una copia de <b>un solo gen</b>. Tiene <b>una sola hebra</b> y usa <b>U</b> en lugar de T. Sale del núcleo por un <b>poro</b> y llega al <b>ribosoma</b>, la máquina que arma proteínas. El ADN original se queda protegido en el núcleo.'),3200); };
+  });
+}
+
+/* ===== ESTACIÓN 4: TRADUCCIÓN ===== */
+function keyHTML(){
+  const grupos={}; Object.entries(KEY).forEach(([c,f])=>(grupos[f]=grupos[f]||[]).push(c));
+  return `<div class="keybox">${Object.keys(FIG).map(f=>`<div class="keyitem"><div class="keyfig">${figSVG(f,34)}<span>${FIG[f].n}</span></div><div class="cods">${grupos[f].map(c=>`<div class="cod">${[...c].map(b=>tile(b,'','sm')).join('')}</div>`).join('')}</div></div>`).join('')}</div>`;
+}
+function est4(){
+  startStation();
+  const arn=transcribir(GEN), cods=codonSplit(arn);
+  h(shell(4,'Fabrica la proteína (traducción)',`Ahora viene la ${g('traduccion','traducción')}. El ${g('ribosoma','ribosoma')} lee el ARN <b>de 3 en 3 letras</b>; cada trío se llama ${g('codon','codón')} e indica qué <b>pieza</b> (${g('aminoacido','aminoácido')}) va en la cadena. Busca el trío en la llave y elige la figura correcta.`)
+  + `<div class="card"><h3>ARN mensajero</h3><div class="strand" id="arn">${cods.map(c=>`<div class="codon">${[...c].map(b=>tile(b)).join('')}</div>`).join('')}</div></div>
+     <div class="card"><h3>🔑 Llave de colores</h3>${keyHTML()}</div>
+     <div class="card"><h3>¿Qué figura indica el trío que lee el ribosoma?</h3>
+       <div class="row" id="opts" style="justify-content:center">${Object.keys(FIG).map(f=>`<button class="figbtn" data-f="${f}">${figSVG(f,40)}<span>${FIG[f].n}</span><small>${FIG[f].s}</small></button>`).join('')}</div>
+       <h3 style="margin-top:16px">Proteína en construcción</h3><div class="chain" id="chain"><span class="mut" id="ph">Aquí se irán uniendo las piezas…</span></div></div>`);
+  const codEls=[...app.querySelectorAll('#arn .codon')], chain=$('#chain');
+  let i=0; codEls[0].classList.add('ribo');
+  const FOLD=[[-26,-20,-18],[24,-26,30],[28,22,-12],[-22,26,40]];
+  $('#opts').onclick=e=>{
+    const b=e.target.closest('button[data-f]'); if(!b||i>=cods.length) return;
+    const f=b.dataset.f, exp=KEY[cods[i]];
+    if(f!==exp){ S.err++; shake(codEls[i]); toast(f==='alto'?'Ese trío no es una señal de fin. Revisa la llave.':`El trío ${cods[i]} no corresponde al ${FIG[f].n}. Revisa la llave.`); return; }
+    codEls[i].classList.remove('ribo'); codEls[i].classList.add('leido');
+    if(f==='alto'){
+      i++; $('#opts').onclick=null; app.querySelectorAll('#opts button').forEach(x=>x.disabled=true);
+      toast('¡ALTO! El ribosoma suelta la proteína.',true);
+      const aas=[...chain.querySelectorAll('.aa')];
+      const xs=aas.map(a=>a.offsetLeft), ys=aas.map(a=>a.offsetTop), cx=xs.reduce((p,q)=>p+q,0)/xs.length, cy=ys.reduce((p,q)=>p+q,0)/ys.length;
+      aas.forEach((a,k)=>{const p=FOLD[k%FOLD.length]; a.style.setProperty('--fx',(cx+p[0]-xs[k])+'px'); a.style.setProperty('--fy',(cy+p[1]-ys[k])+'px'); a.style.setProperty('--fr',p[2]+'deg');});
+      setTimeout(()=>chain.classList.add('folded'),500);
+      setTimeout(()=>{
+        const d=document.createElement('div'); d.className='card';
+        d.innerHTML=`<h3>🧶 ¡Queratina lista!</h3><p style="margin:0">La cadena se dobló y tomó su forma. Muchas proteínas de queratina juntas forman las fibras de <b>tu pelo y tus uñas</b>. La señal de <b>ALTO</b> no agrega pieza: solo le indica al ribosoma que terminó.</p>`;
+        app.appendChild(d);
+        endStation('El ribosoma lee el ARN <b>de 3 en 3 letras</b>. Cada trío indica un <b>aminoácido</b>; los aminoácidos se unen en cadena y la cadena <b>se dobla</b>: así nace una <b>proteína</b>. La forma de la proteína decide su trabajo en la célula.');
+      },1900);
+      return;
+    }
+    $('#ph')?.remove();
+    const a=document.createElement('div'); a.className='aa pop'; a.innerHTML=figSVG(f,46); chain.appendChild(a);
+    i++; codEls[i].classList.add('ribo');
+  };
+}
+
+/* ===== ESTACIÓN 5: MUTACIONES ===== */
+const ESCENARIOS=[
+  {pos:5, nueva:'T', tipo:'corta', txt:'La proteína queda <b>incompleta</b>: el cambio creó una señal de ALTO antes de tiempo. Una queratina tan corta no sirve para formar pelo.'},
+  {pos:8, nueva:'G', tipo:'igual', txt:'¡No pasó nada! El nuevo trío <b>también indica Círculo</b>. Varios tríos pueden indicar la misma pieza, por eso algunas mutaciones no tienen efecto.'},
+  {pos:9, nueva:'G', tipo:'cambia', txt:'Una pieza <b>cambió</b> (Rombo → Triángulo). La proteína se dobla distinto y puede funcionar mal: por ejemplo, un pelo más frágil.'}
+];
+const OPC={igual:'La proteína queda igual',cambia:'Cambia una pieza de la proteína',corta:'La proteína queda incompleta (se corta)'};
+function est5(){
+  startStation(); let k=0, ok=0;
+  const normal=traducir(transcribir(GEN));
+  const protRow=arr=>arr.length?arr.map(f=>figSVG(f,34)).join('<span class="mut">–</span>'):'<span class="mut">(nada)</span>';
+  const genRow=(adn,mpos)=>`<div class="strand" style="justify-content:flex-start">${codonSplit(adn).map((c,ci)=>`<div class="codon">${[...c].map((b,bi)=>tile(b,'','sm'+(ci*3+bi===mpos?' mutada':''))).join('')}</div>`).join('')}</div>`;
+  h(shell(5,'Reto: la mutación',`A veces, al copiar el ADN, <b>una letra cambia</b>. Eso es una <b>${g('mutacion','mutación')}</b>. Observa el cambio y predice qué le pasará a la queratina.`)
+    + `<div class="card"><h3>🔑 Llave de colores</h3>${keyHTML()}</div><div id="esc"></div>`);
+  function render(){
+    const E=ESCENARIOS[k], mut=GEN.slice(0,E.pos)+E.nueva+GEN.slice(E.pos+1);
+    const box=$('#esc');
+    box.innerHTML=`<div class="card"><div class="tag">Caso ${k+1} de ${ESCENARIOS.length}</div>
+      <div class="mutgrid">
+        <div><h3>Gen original</h3><b class="mut">ADN (molde)</b>${genRow(GEN,-1)}<b class="mut">ARN mensajero ↓ (este se busca en la llave)</b>${genRow(transcribir(GEN),-1)}</div>
+        <div><h3>Gen con mutación</h3><b class="mut">ADN (molde)</b>${genRow(mut,E.pos)}<b class="mut">ARN mensajero ↓ (este se busca en la llave)</b>${genRow(transcribir(mut),E.pos)}</div>
+      </div>
+      <p class="mut" style="margin:4px 0">En el ADN la base marcada cambió de <b>${GEN[E.pos]}</b> a <b>${E.nueva}</b>, por eso en el ARN cambió de <b>${PAR_ARN[GEN[E.pos]]}</b> a <b>${PAR_ARN[E.nueva]}</b>. Busca el trío marcado del ARN en la llave.</p>
+      <h3 style="margin-top:12px">¿Qué le pasará a la proteína?</h3>
+      ${Object.entries(OPC).map(([t,l])=>`<button class="opt" data-t="${t}">${l}</button>`).join('')}
+      <div id="res"></div></div>`;
+    box.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{
+      box.querySelectorAll('.opt').forEach(x=>{x.disabled=true; if(x.dataset.t===E.tipo) x.classList.add('ok');});
+      if(b.dataset.t===E.tipo){ ok++; toast('¡Predicción correcta!',true);} else { S.err++; b.classList.add('bad'); toast('No era esa. Mira el resultado.'); }
+      const arnM=transcribir(mut), cM=codonSplit(arnM)[Math.floor(E.pos/3)];
+      box.querySelector('#res').innerHTML=`<div class="rule" style="display:block">
+        <p style="margin:0 0 6px">El trío del ARN quedó como <b>${cM}</b>.</p>
+        <div class="row"><b style="min-width:90px">Normal:</b><div class="protrow">${protRow(normal)}</div></div>
+        <div class="row"><b style="min-width:90px">Con mutación:</b><div class="protrow">${protRow(traducir(arnM))}</div></div>
+        <p style="margin:8px 0 0">${E.txt}</p></div>
+        <button class="btn" id="sig" style="margin-top:10px">${k<ESCENARIOS.length-1?'Siguiente caso →':'Terminar reto'}</button>`;
+      box.querySelector('#sig').onclick=()=>{ k++; if(k<ESCENARIOS.length) render(); else { S._pts=Math.round(ok/ESCENARIOS.length*100); box.innerHTML=''; endStation('Un cambio en <b>una sola letra</b> del ADN puede: <b>no tener efecto</b>, <b>cambiar una pieza</b> de la proteína o <b>cortarla</b>. Como las proteínas forman nuestras características, las mutaciones explican algunas diferencias entre personas y algunas enfermedades hereditarias.',null); } };
+    });
+  }
+  render();
+}
+
+/* ===== RETO DEL GLOSARIO ===== */
+const RETO_IDS=['helicasa','polimerasa','arnm','ribosoma','codon','mutacion','gen','aminoacido','poro','uracilo','replicacion','transcripcion','enzima','nucleo'];
+function mezclar(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+function retoGlosario(){
+  startStation(); closeGlos(); S.glLock=true;
+  const ids=mezclar(RETO_IDS).slice(0,5); let k=0, ok=0;
+  h(`<div class="card"><div class="tag">Reto final</div><h2>📖 Reto del glosario</h2><p class="mut" style="margin:0">Lee cada definición y elige el término correcto. Durante este reto el glosario está cerrado: ¡confía en lo que aprendiste en el viaje!</p></div><div id="q"></div>`);
+  function render(){
+    const id=ids[k], opts=mezclar([id,...mezclar(Object.keys(GLOS).filter(x=>x!==id)).slice(0,3)]);
+    const box=$('#q');
+    box.innerHTML=`<div class="card"><div class="tag">Pregunta ${k+1} de ${ids.length}</div><p class="mut" style="margin:0">¿A qué término corresponde esta definición?</p>
+      <p class="defq">${GLOS[id].d}</p>${opts.map(o=>`<button class="opt" data-o="${o}">${GLOS[o].ic} ${GLOS[o].t}</button>`).join('')}<div id="res"></div></div>`;
+    box.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{
+      box.querySelectorAll('.opt').forEach(x=>{x.disabled=true; if(x.dataset.o===id) x.classList.add('ok');});
+      if(b.dataset.o===id){ ok++; toast('¡Correcto!',true);} else { S.err++; b.classList.add('bad'); toast(`Era: ${GLOS[id].t}`); }
+      box.querySelector('#res').innerHTML=`<button class="btn" id="sig" style="margin-top:12px">${k<ids.length-1?'Siguiente →':'Terminar reto'}</button>`;
+      box.querySelector('#sig').onclick=()=>{ k++; if(k<ids.length) render(); else { S._pts=ok*20; S.glLock=false; box.innerHTML='';
+        endStation(`Acertaste <b>${ok} de ${ids.length}</b>. Conocer el nombre de cada parte te permite explicar todo el proceso: el <b>ADN</b> se copia (<b>replicación</b>), un <b>gen</b> se copia en <b>ARN mensajero</b> (<b>transcripción</b>) y el <b>ribosoma</b> lo lee para armar una <b>proteína</b> (<b>traducción</b>).`,null); } };
+    });
+  }
+  render();
+}
+
+/* ===== RESULTADOS ===== */
+function final(){
+  header();
+  const tot=puntosTotales(), seg=Math.round((Date.now()-S.inicio)/1000);
+  const MAX=TITULOS.length*100, estrellas = tot>=MAX*0.9?3:tot>=MAX*0.66?2:1;
+  h(`<div class="card" style="text-align:center"><div class="tag">Misión cumplida</div><h1>¡Fabricaste queratina, ${esc(S.nombre)}!</h1>
+      <div class="stars">${'⭐'.repeat(estrellas)}${'☆'.repeat(3-estrellas)}</div>
+      <p style="font-size:22px;margin:4px 0"><b>${tot}</b> / ${MAX} puntos · ${Math.floor(seg/60)} min ${seg%60} s</p>
+      <p class="mut" style="margin:0">📖 Términos descubiertos: <b>${S.glos.size} de ${NGLOS}</b> · <button class="gl" type="button">ver mi glosario</button></p>
+      <div class="dogma"><span>ADN</span><em>→</em><span>ARN</span><em>→</em><span>Proteína</span><em>→</em><span>Célula / tus características</span></div></div>
+    <div class="card"><table><tr><th>Estación</th><th>Errores</th><th>Tiempo</th><th>Puntos</th></tr>
+      ${S.est.map((e,i)=>`<tr><td>${i+1}. ${TITULOS[i]}</td><td>${e.err}</td><td>${e.seg} s</td><td>${e.pts}</td></tr>`).join('')}</table></div>
+    <div class="card"><h3>📝 Bitácora</h3><label for="bit">Explica con tus palabras cómo llega la información del ADN a convertirse en una proteína.</label>
+      <textarea id="bit" rows="4" maxlength="800" placeholder="Primero el ADN… luego…"></textarea>
+      <div class="row" style="margin-top:12px"><button class="btn green" id="send">Enviar resultados</button>
+      <button class="btn ghost" id="again">Jugar otra vez</button><span id="st" class="mut"></span></div></div>`);
+  $('#again').onclick=inicio;
+  $('#send').onclick=async()=>{
+    const st=$('#st'), btn=$('#send');
+    if(!URL_REGISTRO){ st.textContent='⚠️ El registro aún no está configurado (falta la URL del Apps Script).'; return; }
+    btn.disabled=true; st.textContent='Enviando…';
+    const d={juego:NOMBRE_JUEGO,fecha:new Date().toLocaleString('es-MX'),nombre:S.nombre,grupo:S.grupo,puntos:tot,tiempo_seg:seg,
+      terminos:S.glos.size+'/'+NGLOS, bitacora:$('#bit').value.trim()};
+    S.est.forEach((e,i)=>{d['e'+(i+1)+'_pts']=e.pts; d['e'+(i+1)+'_err']=e.err;});
+    try{ await fetch(URL_REGISTRO,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(d)});
+      st.textContent='✅ ¡Resultados enviados! Muéstrale esta pantalla a tu maestro.'; }
+    catch(err){ st.textContent='❌ No se pudo enviar. Revisa tu conexión e inténtalo de nuevo.'; btn.disabled=false; }
+  };
+}
+function esc(s){ return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+const STATIONS=[est1,est2,est3,est4,est5,retoGlosario,final];
+inicio();
+</script>
+</body>
+</html>
